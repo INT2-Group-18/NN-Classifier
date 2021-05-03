@@ -158,8 +158,19 @@ def main():
             running_loss += loss.item()
             running_accuracy += accuracy(outputs, labels)
 
-        print('%d, loss: %.3f, accuracy: %.3f' %
-              (epoch + 1, running_loss / len(trainloader), running_accuracy / len(trainloader)))
+        correct = 0
+        net.eval()
+        with torch.no_grad():
+            for testdata in testloader:
+                images, test_labels = testdata
+                images, test_labels = images.to(device), test_labels.to(device)
+                test_outputs = net(images)
+                correct += accuracy(test_outputs, test_labels)
+
+            test_accuracy = correct / len(testloader)
+
+        print('%d, loss: %.3f, accuracy: %.3f, test accuracy: ' %
+              (epoch + 1, running_loss / len(trainloader), running_accuracy / len(trainloader), test_accuracy))
 
     print('Finished Training')
 
