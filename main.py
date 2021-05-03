@@ -130,7 +130,7 @@ def main():
     scaler = amp.GradScaler()
 
     # main training loop
-    for epoch in range(50):  # loop over the dataset multiple times
+    for epoch in range(150):  # loop over the dataset multiple times
 
         net.train()
         test_accuracy = 0.0
@@ -153,6 +153,15 @@ def main():
             scaler.step(optimizer)
             # scheduler.step()
             scaler.update()
+
+            # decrease learning rate based on the epoch
+            if epoch == 50:
+                optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4, nesterov=True)
+                # scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.0008, max_lr=0.008)
+
+            if epoch == 100:
+                optimizer = optim.SGD(net.parameters(), lr=0.0001, momentum=0.9, weight_decay=5e-4, nesterov=True)
+                # scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.0008, max_lr=0.008)
 
             # calculate statistics
             running_loss += loss.item()
