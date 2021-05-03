@@ -81,9 +81,16 @@ class Net(nn.Module):
         return x
 
 
+# a function to calculate the accuracy of our model, given the predictions and the labels
+def accuracy(predictions, labels):
+    classes = torch.argmax(predictions, dim=1)
+    return torch.mean((classes == labels).float())
+
+
 def main():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+    # transform datasets and augument training data
     transform = transforms.Compose(
         [transforms.ToTensor(),
          transforms.ColorJitter(),
@@ -92,7 +99,7 @@ def main():
          transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
          transforms.RandomHorizontalFlip()])
 
-    transformtest = transforms.Compose(
+    transform_test = transforms.Compose(
         [transforms.ToTensor(),
          transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
          transforms.RandomHorizontalFlip()])
@@ -105,7 +112,7 @@ def main():
                                               shuffle=True, num_workers=3, pin_memory=True)
 
     testset = torchvision.datasets.CIFAR10(root='./data', train=False,
-                                           download=True, transform=transformtest)
+                                           download=True, transform=transform_test)
     testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
                                              shuffle=False, num_workers=3, pin_memory=True)
 
@@ -115,6 +122,65 @@ def main():
     PATH = './cifar_net.pth'
     net = Net()
     net.to(device, non_blocking=True)
+
+    # initialize optimizer, loss function, learning rate scheduler and automatic mixed precision
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.SGD(net.parameters(), lr=0.008, momentum=0.9, weight_decay=5e-4, nesterov=True)
+    # scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.008, max_lr=0.012)
+    scaler = amp.GradScaler()
+
+    # main training loop
+    for epoch in range(50):  # loop over the dataset multiple times
+
+        net.train()
+        test_accuracy = 0.0
+        running_loss = 0.0
+        running_accuracy = 0.0
+        for i, data in enumerate(trainloader, 0):
+            # get the inputs; data is a list of [inputs, labels]
+            inputs, labels = data
+            inputs, labels = inputs.to(device), labels.to(device)
+
+            # zero the parameter gradients
+            optimizer.zero_grad()
+
+            with amp.autocast():
+                outputs = net(inputs)
+                loss = criterion(outputs, labels)
+
+            # forward + backward + optimize using mixed precision
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            # scheduler.step()
+            scaler.update()
+
+            # calculate statistics
+            running_loss += loss.item()
+            running_accuracy += accuracy(outputs, labels)
+
+        print('%d, loss: %.3f, accuracy: %.3f' %
+              (epoch + 1, running_loss / len(trainloader), running_accuracy / len(trainloader)))
+
+    print('Finished Training')
+
+    # after training, save the model and calculate the validation accuracy
+    torch.save(net.state_dict(), PATH)
+    dataiter = iter(testloader)
+    images, labels = dataiter.next()
+    net = Net()
+    net.load_state_dict(torch.load(PATH))
+    net.eval()
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for data in testloader:
+            images, labels = data
+            outputs = net(images)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+    print('Accuracy of the network on the 10000 test images: %d %%' % (
+            100 * correct / total))
 
 
 if __name__ == "__main__":
