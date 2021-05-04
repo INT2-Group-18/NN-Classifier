@@ -178,7 +178,7 @@ def main():
 
             test_accuracy = correct / len(testloader)
 
-        print('%d, loss: %.3f, accuracy: %.3f, test accuracy: ' %
+        print('%d, loss: %.3f, accuracy: %.3f, test accuracy: %.3f' %
               (epoch + 1, running_loss / len(trainloader), running_accuracy / len(trainloader), test_accuracy))
 
     print('Finished Training')
