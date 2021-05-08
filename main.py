@@ -178,8 +178,8 @@ def main():
 
             test_accuracy = correct / len(testloader)
 
-        print('%d, loss: %.3f, accuracy: %.3f, test accuracy: %.3f' %
-              (epoch + 1, running_loss / len(trainloader), running_accuracy / len(trainloader), test_accuracy))
+        print(f'{epoch + 1}, loss: {running_loss / len(trainloader):3f}, accuracy: {running_accuracy / len(trainloader):3f}, \
+            test accuracy: {test_accuracy}')
 
     print('Finished Training')
 
@@ -199,8 +199,7 @@ def main():
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
-    print('Accuracy of the network on the 10000 test images: %d %%' % (
-            100 * correct / total))
+    print(f'Accuracy of the network on the 10000 test images: {100 * (correct / total)}')
 
 
 if __name__ == "__main__":
